@@ -265,3 +265,59 @@ nership to a new principal
     (ok true)
   )
 )
+
+;; Read-Only Functions
+
+;; Get complete content information by hash
+;; @param content-hash: SHA-256 hash of the content
+;; @returns: Content metadata or none if not found
+(define-read-only (get-content-info (content-hash (buff 32)))
+  (map-get? content-registry { content-hash: content-hash })
+)
+
+;; Get all content registered by a specific creator
+;; @param creator: Principal address of the creator
+;; @returns: List of content hashes or none if creator has no content
+(define-read-only (get-creator-content-list (creator principal))
+  (map-get? creator-contents { creator: creator })
+)
+
+;; Get license type details
+;; @param license-id: License identifier
+;; @returns: License metadata or none if not found
+(define-read-only (get-license-details (license-id (string-utf8 64)))
+  (map-get? license-types { license-id: license-id })
+)
+
+;; Get current contract owner
+;; @returns: Principal address of contract owner
+(define-read-only (get-contract-owner)
+  (var-get contract-owner)
+)
+
+;; Get the previous version hash of content
+;; @param content-hash: SHA-256 hash of the content
+;; @returns: Optional hash of previous version or error if content not found
+(define-read-only (get-previous-version (content-hash (buff 32)))
+  (match (map-get? content-registry { content-hash: content-hash })
+    content-data (ok (get previous-hash content-data))
+    (err ERR-NOT-FOUND)
+  )
+)
+
+;; Check if content exists in the registry
+;; @param content-hash: SHA-256 hash of the content
+;; @returns: True if content exists, false otherwise
+(define-read-only (content-exists (content-hash (buff 32)))
+  (is-some (map-get? content-registry { content-hash: content-hash }))
+)
+
+;; Get content version number
+;; @param content-hash: SHA-256 hash of the content
+;; @returns: Version number or error if content not found
+(define-read-only (get-content-version (content-hash (buff 32)))
+  (match (map-get? content-registry { content-hash: content-hash })
+    content-data (ok (get version content-data))
+    (err ERR-NOT-FOUND)
+  )
+)
