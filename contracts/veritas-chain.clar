@@ -1,0 +1,116 @@
+;; Title: VeritasChain - Digital Content Provenance Protocol
+;;
+;; Summary:
+;; A transparent, immutable system for establishing and verifying digital content 
+;; ownership on Bitcoin's Layer 2. VeritasChain creates an unforgeable chain of 
+;; custody for digital assets, enabling creators to prove authenticity and track 
+;; content lineage through cryptographic verification.
+;;
+;; Description:
+;; Built on Stacks blockchain, VeritasChain leverages Bitcoin's security to provide
+;; content creators with a permanent, tamper-proof registry for their digital works.
+;; The protocol supports versioning, licensing frameworks, and complete provenance
+;; trails - ensuring that every piece of content can be traced back to its original
+;; creator. Perfect for artists, journalists, researchers, and developers who need
+;; verifiable proof of creation and ownership anchored to Bitcoin's immutable ledger.
+
+;; Constants & Error Codes
+
+(define-constant ERR-NOT-AUTHORIZED u1)
+(define-constant ERR-ALREADY-REGISTERED u2)
+(define-constant ERR-NOT-FOUND u3)
+(define-constant ERR-LICENSE-NOT-FOUND u4)
+(define-constant ERR-MAX-CONTENT-REACHED u5)
+(define-constant ERR-INVALID-INPUT u6)
+(define-constant ERR-INVALID-PRINCIPAL u7)
+
+;; Data Variables
+
+(define-data-var contract-owner principal tx-sender)
+
+;; Data Maps
+
+;; Core content registry mapping content hashes to metadata
+(define-map content-registry
+  { content-hash: (buff 32) }
+  {
+    creator: principal,
+    title: (string-utf8 256),
+    timestamp: uint,
+    description: (string-utf8 1024),
+    license-type: (string-utf8 64),
+    version: uint,
+    previous-hash: (optional (buff 32))
+  }
+)
+
+;; Creator index for efficient content lookup by creator
+(define-map creator-contents
+  { creator: principal }
+  { content-list: (list 100 (buff 32)) }
+)
+
+;; License type registry for standardized licensing frameworks
+(define-map license-types
+  { license-id: (string-utf8 64) }
+  { 
+    description: (string-utf8 512),
+    terms-url: (string-utf8 256)
+  }
+)
+
+;; Private Helper Functions
+
+;; Validate that a string is not empty
+(define-private (is-valid-string (str (string-utf8 256)))
+  (> (len str) u0)
+)
+
+;; Validate that a long string is not empty
+(define-private (is-valid-long-string (str (string-utf8 1024)))
+  (> (len str) u0)
+)
+
+;; Validate that a medium string is not empty
+(define-private (is-valid-medium-string (str (string-utf8 512)))
+  (> (len str) u0)
+)
+
+;; Validate that a short string is not empty
+(define-private (is-valid-short-string (str (string-utf8 64)))
+  (> (len str) u0)
+)
+
+;; Public Functions - Administrative
+
+;; Register a new license type (contract owner only)
+;; @param license-id: Unique identifier for the license
+;; @param description: Human-readable license description
+;; @param terms-url: URL to full license terms
+(define-public (register-license-type 
+  (license-id (string-utf8 64)) 
+  (description (string-utf8 512)) 
+  (terms-url (string-utf8 256)))
+  (begin
+    ;; Authorization check
+    (asserts! (is-eq tx-sender (var-get contract-owner)) (err ERR-NOT-AUTHORIZED))
+    
+    ;; Input validation
+    (asserts! (is-valid-short-string license-id) (err ERR-INVALID-INPUT))
+    (asserts! (is-valid-medium-string description) (err ERR-INVALID-INPUT))
+    (asserts! (is-valid-string terms-url) (err ERR-INVALID-INPUT))
+    
+    ;; Check if license already exists
+    (asserts! (is-none (map-get? license-types { license-id: license-id })) 
+              (err ERR-ALREADY-REGISTERED))
+    
+    ;; Register the license type
+    (ok (map-insert license-types 
+      { license-id: license-id }
+      { 
+        description: description,
+        terms-url: terms-url
+      }
+    ))
+  )
+)
