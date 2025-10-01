@@ -115,7 +115,7 @@
   )
 )
 
-nership to a new principal
+;; Transfer contract ownership to a new principal
 ;; @param new-owner: Principal address of the new contract owner
 (define-public (transfer-ownership (new-owner principal))
   (begin
